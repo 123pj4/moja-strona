@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warsztat — System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+  body {font-family:'Roboto',sans-serif; margin:0; padding:0; background: linear-gradient(135deg, #1f2a44, #3a6fcf); color:#1f2a44;}
+  .container {padding:20px; max-width:1000px; margin:auto;}
+  .card {background:white; padding:25px; border-radius:16px; margin-bottom:20px; box-shadow:0 6px 20px rgba(0,0,0,0.25);}
+  h2 {margin-top:0; font-weight:700; color:#1f2a44; display:flex; align-items:center; justify-content:space-between;}
+  input, select {width:100%; padding:12px; margin-top:10px; border-radius:12px; border:1px solid #b0c4de; font-size:16px; box-sizing:border-box;}
+  button {width:100%; padding:14px; margin-top:12px; border-radius:12px; border:0; background:#2d6cdf; color:white; font-weight:700; font-size:16px; cursor:pointer; box-sizing:border-box;}
+  button:hover {background:#1f54b8;}
+  .nav {display:flex; gap:12px; margin-bottom:20px;}
+  .nav button {flex:1; padding:14px; border-radius:12px; background:#d4dcf0; color:#1f2a44; font-weight:700; font-size:15px; border:0; cursor:pointer;}
+  .nav button.active {background:#2d6cdf; color:white;}
+  .client {padding:16px; border:1px solid #c8d1e0; border-radius:12px; margin-top:12px; background:white; font-size:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;}
+  .client div {flex:1; min-width:180px;}
+  .day {background:white; border:1px solid #c8d1e0; border-radius:12px; padding:10px; min-height:100px; font-size:14px; display:flex; flex-direction:column; justify-content:flex-start; overflow:hidden;}
+  .day:hover {background:#eef5ff;}
+  #calendar {display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin-top:12px;}
+  #smallPassBtn {background:#6b7a99; color:white; border:0; padding:8px 12px; width:auto; margin-top:12px; border-radius:8px; font-size:14px; cursor:pointer;}
+  #smallPassBtn:hover {background:#566281;}
+  #passModal, #visitModal, #visitDetailModal {position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); display:none; justify-content:center; align-items:center; z-index:1000;}
+  #passBox, #visitBox {background:white; padding:20px; border-radius:16px; width:90%; max-width:400px; box-shadow:0 6px 20px rgba(0,0,0,0.3);} 
+  #visitDetailBox {background:white; padding:20px; border-radius:16px; width:90%; max-width:600px; max-height:80%; overflow-y:auto; box-shadow:0 6px 20px rgba(0,0,0,0.3);}
+  .action-buttons button {width:auto; margin-left:5px; padding:6px 10px; font-size:14px;}
+  .appointment {font-size:12px; margin-top:2px; background:#2d6cdf; color:white; border-radius:6px; padding:2px 4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer;}
+  .appointment.expanded {white-space:normal;}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="login" class="card">
+    <h2>Logowanie</h2>
+    <input id="pass" type="password" placeholder="Hasło">
+    <button id="loginBtn">Zaloguj</button>
+    <p id="msg" style="color:red"></p>
+    <button id="smallPassBtn">Zmień hasło</button>
+  </div>
+
+  <div id="passModal">
+    <div id="passBox">
+      <h3>Zmień hasło</h3>
+      <input id="oldPass" type="password" placeholder="Stare hasło">
+      <input id="newPass" type="password" placeholder="Nowe hasło">
+      <button id="doChangePass">Zmień</button>
+      <button onclick="passModal.style.display='none'" style="margin-top:10px;background:#ccc;color:#000;">Anuluj</button>
+    </div>
+  </div>
+
+  <div id="visitModal">
+    <div id="visitBox">
+      <h3 id="visitTitle">Dodaj wizytę</h3>
+      <select id="visitClient"></select>
+      <input id="visitDate" type="date">
+      <input id="visitTime" type="time">
+      <input id="visitNote" placeholder="Opis wizyty">
+      <button id="saveVisitBtn">Zapisz</button>
+      <button onclick="visitModal.style.display='none'" style="margin-top:10px;background:#ccc;color:#000;">Anuluj</button>
+    </div>
+  </div>
+
+  <div id="app" style="display:none;">
+    <div class="nav">
+      <button id="tabClients" class="active">Baza klientów</button>
+      <button id="tabCalendar">Kalendarz</button>
+    </div>
+
+    <div id="clientsPage" class="card">
+      <h2>Dodaj klienta</h2>
+      <input id="reg" placeholder="Numer rejestracyjny">
+      <input id="brand" placeholder="Marka">
+      <input id="model" placeholder="Model">
+      <input id="fname" placeholder="Imię">
+      <input id="lname" placeholder="Nazwisko">
+      <input id="phone" placeholder="Telefon">
+      <button id="addClient">Dodaj klienta</button>
+      <h2 style="margin-top:25px;">Wyszukaj klienta</h2>
+      <input id="searchReg" placeholder="Numer rejestracyjny">
+      <button id="searchBtn">Szukaj</button>
+      <h2 style="margin-top:25px;">Lista klientów</h2>
+      <div id="clientList"></div>
+    </div>
+
+    <div id="calendarPage" class="card" style="display:none; max-width:950px;">
+      <h2>Kalendarz wizyt (tydzień) <span class="action-buttons"><button id="addVisitBtn">Dodaj wizytę</button></span></h2>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <button id="prevWeek">◀</button>
+        <h3 id="weekTitle"></h3>
+        <button id="nextWeek">▶</button>
+      </div>
+      <div id="calendar"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let PASS="12345";
+let clients=[];
+let current=new Date();
+let editingVisit=null;
+
+loginBtn.onclick=()=>{if(pass.value===PASS){login.style.display='none';app.style.display='block';renderClients();renderCalendar();} else msg.textContent='Złe hasło';};
+smallPassBtn.onclick=()=>passModal.style.display='flex';
+doChangePass.onclick=()=>{if(oldPass.value!==PASS){alert('Złe stare hasło');return;} if(!newPass.value.trim()){alert('Nowe hasło nie może być puste');return;} PASS=newPass.value.trim(); alert('Hasło zmienione'); passModal.style.display='none';};
+
+addClient.onclick=()=>{
+  let client={reg:reg.value,brand:brand.value,model:model.value,fname:fname.value,lname:lname.value,phone:phone.value,appointments:[]};
+  clients.push(client);
+  renderClients();
+  // Wyczyść pola po dodaniu klienta
+  reg.value=''; brand.value=''; model.value=''; fname.value=''; lname.value=''; phone.value='';
+};
+
+function renderClients(filteredClients){
+  let list = filteredClients || clients;
+  clientList.innerHTML='';
+  list.forEach((c,i)=>{
+    let div=document.createElement('div');
+    div.className='client';
+    div.innerHTML=`<div><b>${c.reg}</b> ${c.brand} ${c.model}<br>${c.fname} ${c.lname} • ${c.phone}</div>`;
+    let editBtn=document.createElement('button'); editBtn.textContent='Edytuj';
+    editBtn.onclick=()=>{
+      c.reg=prompt('Numer rejestracyjny',c.reg)||c.reg;
+      c.brand=prompt('Marka',c.brand)||c.brand;
+      c.model=prompt('Model',c.model)||c.model;
+      c.fname=prompt('Imię',c.fname)||c.fname;
+      c.lname=prompt('Nazwisko',c.lname)||c.lname;
+      c.phone=prompt('Telefon',c.phone)||c.phone;
+      renderClients(); renderCalendar();
+    };
+    let delBtn=document.createElement('button'); delBtn.textContent='Usuń klienta';
+    delBtn.onclick=()=>{clients.splice(clients.indexOf(c),1);renderClients();renderCalendar();};
+    div.appendChild(editBtn); div.appendChild(delBtn);
+    clientList.appendChild(div);
+  });
+}
+
+searchBtn.onclick=()=>{
+  let query=searchReg.value.trim().toLowerCase();
+  let filtered = clients.filter(c=>c.reg.toLowerCase().includes(query));
+  renderClients(filtered);
+};
+
+function renderCalendar(){
+  let weekStart = new Date(current);
+  weekStart.setDate(current.getDate() - current.getDay() + 1);
+  let weekDays = [];
+  for(let i=0;i<7;i++){
+    let d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    weekDays.push(d);
+  }
+  weekTitle.textContent = weekDays[0].toLocaleDateString('pl') + ' - ' + weekDays[6].toLocaleDateString('pl');
+
+  calendar.innerHTML='';
+  weekDays.forEach(d=>{
+    let cell=document.createElement('div'); cell.className='day';
+    cell.innerHTML=`<b>${d.getDate()} ${d.toLocaleString('pl',{weekday:'short'})}</b>`;
+    clients.forEach(c=>{
+      c.appointments.filter(a=>{
+        let ad=new Date(a.date);
+        return ad.getDate()===d.getDate() && ad.getMonth()===d.getMonth() && ad.getFullYear()===d.getFullYear();
+      }).forEach(a=>{
+        let appDiv=document.createElement('div'); appDiv.className='appointment'; appDiv.textContent=`${a.time} ${a.note}`;
+        appDiv.onclick=(e)=>{e.stopPropagation(); showVisitDetail(c,a);};
+        cell.appendChild(appDiv);
+      });
+    });
+    calendar.appendChild(cell);
+  });
+}
+
+function showVisitDetail(client, appointment){
+  let modal = document.createElement('div');
+  modal.id = 'visitDetailModal';
+  modal.style.display='flex';
+  modal.innerHTML = `<div id='visitDetailBox'><h3>${client.fname} ${client.lname} - ${client.reg}</h3>
+    <p><b>Data:</b> ${appointment.date}</p>
+    <p><b>Godzina:</b> ${appointment.time}</p>
+    <p><b>Opis:</b> ${appointment.note}</p>
+    <button id='delVisitBtn'>Usuń wizytę</button>
+    <button onclick='document.getElementById("visitDetailModal").remove()' style='margin-top:10px;background:#ccc;color:#000;'>Zamknij</button>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('delVisitBtn').onclick=()=>{
+    let index = client.appointments.indexOf(appointment);
+    if(index>-1) client.appointments.splice(index,1);
+    renderCalendar();
+    modal.remove();
+  };
+}
+
+prevWeek.onclick=()=>{current.setDate(current.getDate()-7);renderCalendar();};
+nextWeek.onclick=()=>{current.setDate(current.getDate()+7);renderCalendar();};
+
+tabClients.onclick=()=>{tabClients.classList.add('active');tabCalendar.classList.remove('active');clientsPage.style.display='block';calendarPage.style.display='none';};
+tabCalendar.onclick=()=>{tabCalendar.classList.add('active');tabClients.classList.remove('active');clientsPage.style.display='none';calendarPage.style.display='block';renderCalendar();};
+
+addVisitBtn.onclick=()=>{
+  if(clients.length===0){alert('Dodaj najpierw klienta'); return;}
+  visitTitle.textContent='Dodaj wizytę';
+  visitClient.innerHTML='';
+  clients.forEach((c,i)=>{let opt=document.createElement('option'); opt.value=i; opt.textContent=`${c.fname} ${c.lname} - ${c.reg}`; visitClient.appendChild(opt);});
+  let today = new Date();
+  visitDate.value = today.toISOString().split('T')[0];
+  visitTime.value = '09:00';
+  visitNote.value='';
+  visitModal.style.display='flex';
+};
+
+saveVisitBtn.onclick=()=>{
+  let cIndex=parseInt(visitClient.value);
+  if(cIndex>=0 && clients[cIndex]){
+    clients[cIndex].appointments.push({
+      date: visitDate.value,
+      time: visitTime.value,
+      note: visitNote.value
+    });
+    renderCalendar();
+    visitModal.style.display='none';
+  }
+};
+</script>
+</body>
+</html>
